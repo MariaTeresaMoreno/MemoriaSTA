@@ -86,28 +86,21 @@ Gabriel López Millán \\ Alejandro Molina Zarca
 
 Para llevar a cabo el desarrollo de esta práctica el primer paso a seguir es el establecimiento de los servicios, relaciones y funcionalidades que debe de tener cada una de las tres topologías presentes en el escenario realizado. 
 
- Nuestro escenario está ligado a las administraciones de las conserjerías de cada gobierno autonómico
+ Nuestro escenario está ligado a las administraciones de las conserjerías de cada gobierno autonómico, cada una de ellas está compuesta por los representantes de los partidos políticos, sus subordinados, y fijándonos en la parte de gestión, nosotros nos centraremos en la parte donde trabajan las personas que administran y gestionan los dispositivos de red y que se encargan de que todo esté funcionando correctamente. 
 
-
- La topología ideal se muestra en la figura \ref{fig:topoideal}, como podemos observar consta de tres organizaciones distintas conectadas entre sí a través de internet. Dos de estas organizaciones presentan la misma estructura de despliegue. La organización 110, en nuestro caso, se corresponderá con el Departamento Central, que se encargará de la administración de la red de las otras dos organizaciones es, por esto, la que consta de una
-mayor cantidad de servicios desplegados. Las organizaciones 111 y 112 representan el despliegue de dos organizaciones que realizan las funciones de dos conserjerías de educación de dos comunidades autónomas de España, en nuestro caso, de Murcia y Valencia, y están, como se ha dicho anteriormente, gestionadas por el Departamento Central.
-\begin{figure}[htb]
+\begin{figure}[h]
     \begin{center}
-        \includegraphics[width=1\textwidth]{topoideal.jpg}
+        \includegraphics[width=1\textwidth]{topo-ideal.png}
          \caption{Topología ideal.}
          \label{fig:topoideal}
     \end{center}
 \end{figure}
 
-\newpage 
-%topologia ideal FALTA FOTO Y EXPLICACIÓN
- Una vez presentada la topología ideal, nos centraremos en explicar 
+\newpage La topología ideal se muestra en la figura \ref{fig:topoideal}, como podemos observar consta de tres organizaciones distintas conectadas entre sí a través de internet. Dos de estas organizaciones presentan la misma estructura de despliegue. 
+La organización 110, en nuestro caso, se corresponderá con el Departamento Central, que se encargará de la administración de la red de las otras dos organizaciones es, por esto, la que consta de una mayor cantidad de servicios desplegados. Las organizaciones 111 y 112 representan el despliegue de dos organizaciones que realizan las funciones de dos conserjerías de educación de dos comunidades autónomas de España, en nuestro caso, de Murcia y Valencia, y están, como se ha dicho anteriormente, gestionadas por el Departamento Central.
 
-.........
-
- En la topología se debe desplegar una serie de servicios telemáticos, así como se deberá proteger el acceso a éstos y la transmisión de los paquetes de forma posterior al despliegue.  Concretamente la topología debe incluir los servicios de monitorización de los dispositivos de la red a través del protocolo SNMP, un servicio de almacenamiento de información en la nube mediante el despliegue de owncloud, llamadas sobre voIP para
+En la topología se debe desplegar una serie de servicios telemáticos, así como se deberá proteger el acceso a éstos y la transmisión de los paquetes de forma posterior al despliegue.  Concretamente la topología debe incluir los servicios de monitorización de los dispositivos de la red a través del protocolo SNMP, un servicio de almacenamiento de información en la nube mediante el despliegue de owncloud, llamadas sobre voIP para
 lo que se llevará a cabo el despliegue del servicio asterisk y un directorio activo para la autenticación en los servicios de owncloud y asterisk mediante LDAP.
-
 
  Dados los servicios que se deben desplegar supondremos que serán implementados en las conserjerías de cada gobierno autonómico, en concreto, en la Región de Murcia y la Comunidad Valenciana. Dichas conserjerías estarán gestionadas por un departamento central que se encargará de la administración de red y de solucionar cualquier avería que pueda ocurrir en ambas conserjerías. Se ha elegido este escenario real por la necesidad de almacenamiento en la nube para la disponibilidad de compartición de documentos en la nube o la necesidad de repositorio de almacenamiento para los usuarios de estas organizaciones así como la implementación de una comunicación vía voIP entre las conserjerías y el departamento central para el abaratamiento de coste de las llamadas entre ellos, ya que no se necesita
 incurrir en un gasto adicional de líneas telefónicas.
@@ -122,31 +115,90 @@ se transmita a través de la red en claro. En el caso de asterisk suponemos que 
 
 \newpage
 
+\section{Protocolo DNS}
+El protocolo DNS permite la traducción de nombres de dominio a IPs. Aparte también permite el descubrimiento de los diferentes servicios que ofrece un dominio. Es un protocolo jerarquizado en el que cada servidor DNS se encarga de atender las solicitudes de su segmento del dominio.
+
+\subsection{Definición de dominios}
+Dado que tenemos tres organizaciones independientes, cada una necesita su dominio propio para poder acceder a los diferentes servicios.
+
+Podemos distingur los siguientes dominios:
+\begin{itemize}
+	\item dep-central.es
+		\begin{itemize}
+			\item centralita1
+			
+			Subdominio para la centralita asterisk.
+			\item ldap
+			
+			Subdominio para la base de datos LDAP.
+			\item ownclowd
+			
+			Subdominio para el servicio de almacenamiento de archivos en la nube.
+			\item clientAuth
+			
+			Subdominio alternativo que permite la autenticación con certificados de los clientes.
+			\item crl
+			
+			Este subdominio se usa para las listas de revocación de los certificados.
+		\end{itemize}
+	\item conserjeriaMurcia.es
+		\begin{itemize}
+			\item centralita1
+			
+			Subdominio para la centralita asterisk.
+		\end{itemize}
+	\item conserjeriaValencia.es
+	\begin{itemize}
+		\item centralita1
+		
+		Subdominio para la centralita asterisk.
+	\end{itemize}
+\end{itemize}
+
+\subsection{Ficheros de configuración}
+Por cada dominio que haga falta, agregamos una zona apuntando a su correspondiente fichero de configuración. Los servidores DNS pueden ser maestros y esclavos. Estos últimos realizan copia de las entradas del DNS de manera periódica, de modo que si este se cae, poder atender ellos las peticiones.
+
+\begin{figure}[htb]
+	\centering
+	\includegraphics[width=0.7\linewidth]{named_conf_local}
+	\caption{Fichero named.conf.local}
+	\label{fig:named}
+\end{figure}
+
+Los diferentes registros DNS se guardan en estos ficheros. se componen de diferentes entradas.
+
+\begin{itemize}
+	\item \textbf{Registro A y AAA} se corresponden con las asociaciones directas entre nombre de maquina y su dirección IP.
+	\item \textbf{Registro CNAME} permiten la creación de alias para las máquinas, lo que permite que solo se tenga que modificar en un lugar para cambiar su IP.
+	\item \textbf{Registros SRV} anuncian los diferentes servicios soportados por un dominio, junto con su nombre de maquina y puerto de acceso.
+\end{itemize}
+\begin{figure}
+	\centering
+	\includegraphics[width=0.7\linewidth]{Img/dn_dep-central_es.png}
+	\caption{Fichero db.dep-central.es}
+	\label{fig:db.dep-central.es}
+\end{figure}
+
+
 \section{Protocolo SNMP}
+
 El protocolo SNMP (Simple Network Management Protocol) consiste en la monitorización de los distintos componentes de una red. Dentro de este protocolo encontramos dos roles posibles, el rol de agente que será el que asume el dispositivo manejado y el de manejador que se encargará de solicitar la información de monitorización al agente.
 
 
- En nuestro escenario ideal se ha aplicado la versión 2 de éste protocolo. Hemos decidido esto porque las organizaciones están conectadas entre sí mediante un túnel VPN, por lo que entre ellas solo se generará tráfico interno y no será necesario la securización de SNMP versión 3. 
+ En nuestro escenario ideal se ha aplicado la versión 2 de este protocolo. Hemos decidido esto porque las organizaciones están conectadas entre sí mediante un túnel VPN, por lo que entre ellas solo se generará tráfico interno y no será necesario la securización de SNMP versión 3. 
 
+La versión 2 del protocolo SNMP se caracteriza por la inclusión de nuevos comandos de interés como getbulk para recuperar información en grandes cantidades y mejora de funcionalidad de la primera versión como en el caso de los trap.
 
- La versión 2 del protocolo SNMP se caracteriza por la inclusión de nuevos comandos de interés como getbulk para recuperar información en grandes cantidades y mejora de funcionalidad de la primera versión como en el caso de los trap.
+Los trap son mensajes lanzados por el agente para notificar de situaciones de error o excepcionales, en el caso de la versión 2 lo que se ha hecho ha sido mejorar su función ya que estaban disponibles en la primera.
 
+En el caso de la operación getbulk se incluye con el fin de mejorar la obtención de información por parte del manejador ya que, de este modo, puede obtener grandes cantidades de información con una única solicitud, a diferencia de la primera versión.
 
- Los trap son mensajes lanzados por el agente para notificar de situaciones de error o excepcionales, en el caso de la versión 2 lo que se ha hecho ha sido mejorar su función
-ya que estaban disponibles en la primera.
+Los MIB o Management Information Base, son estructuras jerárquicas que contienen la información de todos los dispositivos gestionados a través de este protocolo. Los arboles de información SNMP constan de dos tipos distintos de nodos: estructurales o de información. Los nodos estructurales no contienen información útil del sistema sino que almacenan su posición en el árbol, son ramas del árbol. En cambio los nodos de información son nodos hoja, estos nodos se basan en la macro object-type que contiene cláusulas para la definición de características de un MIB, es decir, se encargan de definir los tipos de datos de los MIB.
 
+SNMPv2 se compone de los siguientes nodos estructurales: system, interfaces, at, ip, icmp, tcp, udp, egp y translation.  
 
- En el caso de la operación getbulk se incluye con el fin de mejorar la obtención de información por parte del manejador ya que, de este modo, puede obtener grandes cantidades de información con una única solicitud, a diferencia de la primera versión.
-
-
- Los MIB o Management Information Base, son estructuras jerárquicas que contienen la información de todos los dispositivos gestionados a través de este protocolo. Los arboles de información SNMP constan de dos tipos distintos de nodos: estructurales o de información. Los nodos estructurales no contienen información útil del sistema sino que almacenan su posición en el árbol, son ramas del árbol. En cambio los nodos de información son nodos hoja, estos nodos se basan en la macro object-type que contiene cláusulas para la definición de características de un MIB, es decir, se encargan de definir los tipos de datos de los MIB.
-
-
- SNMPv2 se compone de los siguientes nodos estructurales: system, interfaces, at, ip, icmp, tcp, udp, egp y translation.
-Del nodo System cuelga información genérica del sistema gestionado como la información de localización o el nombre. 
-
-\subsection{Definición de usuarios}
-\subsection{Fichero de configuración}
+\subsection{Definición de usuarios en SNMPv3}
+\subsection{Ficheros de configuración}
 \subsection{Análisis de trazas}
 
 \newpage
@@ -171,17 +223,13 @@ El protocolo SIP, Session Iniciation Protocol, es un protocolo de señalización
  SIP se encarga de establecer la conexión entre los equipos y de establecer las características que tendrá la llamada, pero no garantiza que la red pueda soportar las características establecidas.
 Para implementarlo, los equipos finales implementan dos Agentes SIP diferentes: User Agent Client (UAC), y User Agent Server (UAS). El primero se utiliza para realizar solicitudes de llamadas, es decir, para realizar una llamada. Y el segundo para recibirlas.
 
-
-
 Además, se diferencian tres tipos de Servidores:
-
 \begin{itemize}
     \item Por un lado, el Proxy Server y el Redirect Server que se encargan de proporcionar la información necesaria para que la llamada llegue hasta el destinatario (el proxy server redirige la llamada directamente, mientras que el Redirect Proxy indica la IP en la que se encuentra el destinatario).
     
     \item Por otro lado, el Registrer Server acepta solicitudes de registro de usuarios, y mantiene la localización de los mismos en un Servidor de Localización (Location Server). El Registrer Server se puede localizar en la misma máquina que el Proxy/Redirect o en otra distinta. 
     
 \end{itemize}  
-
 
 Todos los terminales se registran, nada más iniciarse, en el Register Server, donde se asocia su ID de usuario con su IP. De esta forma, al realizar una llamada, los proxys buscan la IP del equipo al que queremos llamar, o nos redirigen directamente hacia él (Proxy Server), o nos indica la IP (Redirect Server).
 Una vez que ya conocemos la IP del equipo al que queremos llamar, entra en juego el protocolo SIP propiamente dicho. En la figura \ref{fig:1} podemos ver un ejemplo de una negociación básica SIP.
@@ -230,7 +278,7 @@ Con respecto a la protección de los paquetes transmitidos durante una llamada y
 negociación de ésta se va a aplicar tunelado IPSec aplicando el protocolo IKE para el intercambio de las claves de cifrado.
 
   
-Dado que en el diseño implementado se ha desactivado la opción de \textit{directmedia},\ref{fig:sip.conf}, el tráfico de las llamadas se transmite entre las centralitas lo que supone una mayor facilidad con respecto a la protección de dicho tráfico. Esto a su vez, supone una mayor exposición y vulnerabilidad de dicho tráfico a posibles ataques.
+Dado que en el diseño implementado se ha desactivado la opción de \textit{directmedia}, figura \ref{fig:sip.conf}, el tráfico de las llamadas se transmite entre las centralitas lo que supone una mayor facilidad con respecto a la protección de dicho tráfico. Esto a su vez, supone una mayor exposición y vulnerabilidad de dicho tráfico a posibles ataques.
 
 \subsection{Diseño implementado}
 
@@ -248,7 +296,7 @@ La principal ventaja de esta decisión es la seguridad, ya que, al ir todo a tra
 
  En nuestro caso, no será necesario proteger los canales SIP, ya que nuestras organizaciones están interconectadas entre sí mediante una VPN común, por lo que el tráfico no saldrá de la red interna.
 
-\subsection{Configuración de ficheros}
+\subsection{Configuración de ficheros}\label{Confich}
 El administrador de cada organización deberá configurar la información de los usuarios en el fichero \textit{/etc/asterisk/users.conf}. 
 
 
@@ -326,7 +374,7 @@ Una de las configuraciones extras que se nos propuso por parte de los profesores
 \newpage
 \begin{figure}
     \begin{center}
-        \includegraphics[width=0.8\textwidth]{extens+buzon.png}
+        \includegraphics[width=0.7\textwidth]{extens+buzon.png}
          \caption{/etc/asterisk/voicemail.conf}
          \label{fig:extensions.conf}
     \end{center}
@@ -419,7 +467,7 @@ En una comunicación voz IP, el primer paso es llevar a cabo la autenticación d
     \begin{center}
         \includegraphics[width=1\textwidth]{200OK.png}
          \caption{Mensaje 200 OK.}
-         \label{fig:reg2}
+         \label{fig:200}
     \end{center}
 \end{figure}
 
@@ -530,7 +578,7 @@ También sabemos que responde al mensaje invite previamente enviado puesto que e
 
 El llamante envía un mensaje ACK confirmando el mensaje anterior. En el campo Request-Line se nos informa de que el mensaje transmitido es un acknowledgement. Los campos Tag, From y To se corresponderán con los anteriores valores.
 
-Cabe destacar, que si la opción ``directmedia=yes'' Asterisk envía INVITES a los dos llamantes para poder enviar paquetes RTP de modo directo, es decir, los paquetes RTP de audio se enviarán directamente entre los llamantes sin pasar por la centralita. Este proceso lo podemos ver en la figura \ref{invitesss}.
+Cabe destacar, que si la opción ``directmedia=yes'' Asterisk envía INVITES a los dos llamantes para poder enviar paquetes RTP de modo directo, es decir, los paquetes RTP de audio se enviarán directamente entre los llamantes sin pasar por la centralita. Este proceso lo podemos ver en la figura \ref{fig:invitesss}.
 
 \begin{figure}[htb]
     \begin{center}
@@ -588,7 +636,7 @@ El intercambio de mensajes es muy similar al descrito en en la sección anterior
 
 \newpage
 
-\section{Servicio Owncloud y LDAP}
+\section{Servicio de almacenamiento cloud y LDAP}
 \subsection{Diseño ideal}
 En el diseño ideal de la topología, todas las organizaciones dispondrán de un servicio centralizado de Owncloud, decimos centralizado porque este servicio de almacenamiento estará alojado en el Departamento Central de nuestro escenario.
 
@@ -602,11 +650,12 @@ Respecto a los certificados necesarios para el servidor, en nuestro diseño idea
 obtendríamos nuestros certificados de la FNMT-RCM, ya que es el Prestador de Servicios de Certificación utilizado por la administración pública. Esto lo hemos decidido así con el fin de no provocar alarma entre los usuarios por las conexiones no seguras, ya que cuando una conexión no es segura se muestra en el navegador el mensaje de Conexión insegura. Aun así, como en
 esta organización todos los trabajadores tendrían un certificado,  dispondríamos de una CA en nuestra organización para proporcionarles nosotros mismos dichos certificados. La CA se encontraría en un equipo del Departamento Central con acceso restringido.
 
+\newpage
 \subsection{Diseño implementado}
 En el diseño real implementado, se ha llevado a cabo la inclusión de un único servicio
 de owncloud y un solo servicio LDAP para ambas organizaciones. Todas las organizaciones tendrán accesos personalizados al servicio cloud, esto será configurado por los administradores del Departamento Central ya que es allí donde se alojarán en la misma máquina virtual por temas de optimización de recursos. 
 
-\newpage Por este mismo motivo no ha sido necesario cifrar el canal entre ambos, ya
+Por este mismo motivo no ha sido necesario cifrar el canal entre ambos, ya
 que al encontrarse dentro de la misma máquina se comunican de forma interna.
 
 Los usuarios de nuestro servicio en la nube son dados de alta por el administrador en el
@@ -617,21 +666,148 @@ Cada usuario, inicialmente, podrá disponer en ella de hasta 1GB de almacenamien
 
 Por simplicidad, tenemos una CA alojada en la misma máquina virtual de LDAP y owncloud, dicha CA estará firmada por la FNMT. Además, dadas las actividades y trámites que realizan los usuarios de nuestras organizaciones cada uno tendrá un certificado cliente propio y accederá a los servicios de su organización autenticándose utilizando su usuario y contraseña, que previamente habrá sido configurado y almacenado en el LDAP central.
 
-\subsection{Directorio activo, LDAP}
-El servidor LDAP almacenará información sobre los usuarios de la organización, como
-por ejemplo su unidad organizativa, nombre de usuario y contraseña. 
+\subsection{Servicio de directorio activo}
+El servidor LDAP almacenará información sobre los usuarios de la organización, como, por ejemplo, su unidad organizativa, nombre de usuario y contraseña. Dado que está alojado en una máquina virtual del Departamento Central, sigue la siguiente estructura organizacional, figura \ref{fig:ldap}.
+\newpage
 
- El servidor de owncloud hará uso de este servidor para realizar la autenticación de los
-usuarios en cada solicitud de acceso. Para instalar el servidor LDAP se utilizará slapd y ldap-utils. Una vez introducidos los datos de configuración, se creará un fichero ldif en el que las se insertarán las entradas. 
-\subsubsection{Integración de LDAP con Asterisk}
+\begin{figure}[htb]
+    \begin{center}
+        \includegraphics[width=1\textwidth]{ldap.png}
+        \caption{Estructura del directorio activo.}
+         \label{fig:ldap}
+    \end{center}
+\end{figure}
+
+Como el LDAP está alojado en el Departamento Central y es éste quien lo administra, el ``domain name'' estará compuesto por el dominio de éste, es decir, ``dep-central.es''. Como es el Departamento Central quien gestiona el directorio activo las conserjerías serán unidades organizacionales, además, tendremos una unidad organizacional para las extensiones de asterisk y otra para almacenar los usuarios de las organizaciones que hagan uso del servicio de almacenamiento owncloud.
+
+Para instalar el servidor LDAP se utilizará slapd y ldap-utils. Una vez introducidos los datos de configuración, se creará un fichero ldif para insertar a los usuarios que estarán almacenados dentro del LDAP.
+
+Como podemos ver en la figura \ref{fig:users} tenemos dos ejemplos de usuarios, el primero es el administrador de la Conserjería de Murcia y el segundo un usuario de la Conserjería de Valencia, ambos tienen acceso al servicio cloud de almacenamiento ya que pertenecen a la unidad organizacional de owncloud, además de pertenecer a la unidad organizacional de sus respectivas conserjerías. 
+
+Cabe destacar que dichos usuarios se autenticaran con su uid, identificador de usuario, en el servicio de almacenamiento y en los dispositivos que utilizan en su trabajo.
+
+\begin{figure}[htb]
+    \begin{center}
+        \includegraphics[width=0.9\textwidth]{ldap/user1.png}
+        \includegraphics[width=0.9\textwidth]{ldap/user2.png}
+        \caption{Entradas del directorio activo.}
+         \label{fig:users}
+    \end{center}
+\end{figure}
+
+\subsubsection{Autenticación de usuarios Asterisk con LDAP}
+Con la integración de asterisk en LDAP almacenaremos las credenciales de los usuarios de asterisk en el directorio LDAP y la configuración de las extensiones. 
+
+Esto nos permitirá tener la información de los teléfonos voIP en el mismo directorio que las credenciales de acceso de nuestros usuarios y también establecer llamadas entre usuarios de la misma organización. A su vez, esto nos permite una mejor administración de los usuarios ya que tenemos toda la información en un mismo sitio. 
+
+Para ello, el administrador de nuestro directorio activo introducirá la configuración que se ha explicado en la sección \ref{Confich}. Un ejemplo de entrada que defina una extensión de asterisk lo podemos ver en la figura \ref{fig:users-aster}.
+
+\begin{figure}[htb]
+    \begin{center}
+        \includegraphics[width=0.5\textwidth]{ldap/asterisk-user.png}
+        \caption{Entrada con información de asterisk.}
+         \label{fig:users-aster}
+    \end{center}
+\end{figure}
+\newpage
+Como podemos ver, todas las extensiones pertenecen a la unidad organizacional de asterisk, y en cada entrada se establece su extensión con el atributo ``AstAccountCallerID'', el contexto en el que está configurada la extensión en el fichero ``/etc/asterisk/extensions.con'', se establece el tipo de usuario y se permite el establecimiento de sesión en cualquier IP. Para utilizar la clase ``AsteriskSIPUser'' debemos incluir el esquema de asterisk en nuestro LDAP.
+
+Para que la centralita de cada organización sepa donde está alojado el directorio LDAP debemos configurar el fichero ``/etc/asterisk/res\_ldap.conf''. En la figura \ref{fig:res_ldap} tenemos una de las tres configuraciones que han sido necesarias, en este caso es la configuración de la máquina virtual que aloja el LDAP situada en la organización Departamento Central, por esta razón el host tiene como IP la IP de localhost, en el parámetro hemos establecido el dominio base de nuestra estructura organizacional y en el parámetro user definimos el dn del administrador del LDAP, ya que sin esto, no es posible realizar consultas de credenciales tan importantes como las contraseñas de nuestras extensiones. 
+\begin{figure}
+    \begin{center}
+        \includegraphics[width=0.5\textwidth]{ldap/res_ldap.png}
+        \caption{Sección [\_general] del fichero res\_ldap.conf.}
+         \label{fig:res_ldap}
+    \end{center}
+\end{figure}
+
+\newpage
+Además, debemos establecer con qué credenciales se realizará la autenticación del usuario, en nuestro caso, será con el uid y contraseña de usuario definidos en las entradas de cada cliente, figura \ref{fig:res_ldap2}.
+
+\begin{figure}[htb]
+    \begin{center}
+        \includegraphics[width=0.3\textwidth]{ldap/res_ldap-2.png}
+        \caption{Sección [SIP] del fichero res\_ldap.conf.}
+         \label{fig:res_ldap2}
+    \end{center}
+\end{figure}
+
+Para conseguir que nuestras centralitas obtengan las credenciales y la configuración de los usuarios del LDAP debemos modificar el fichero ``/etc/asterisk/extconfig.conf''.
+
+\begin{figure}[htb]
+    \begin{center}
+        \includegraphics[width=0.95\textwidth]{ldap/extconfig.png}
+        \caption{Configuración del fichero extconfig.conf.}
+         \label{fig:extconfig}
+    \end{center}
+\end{figure}
+
+Con el parámetro sippeers le indicamos a asterisk el dominio de nuestro LDAP y con extensions le indicamos la unidad organizativa donde se encuentran incluidas todas las extensiones.
+
 \subsubsection{Análisis de trazas}
+A continuación, se muestran las trazas de LDAP obtenidas en el proceso llevado a cabo
+por un usuario al introducir sus credenciales en la página de login de Owncloud.
 
-\subsection{Servicio Owncloud}
-\subsubsection{Integración con LDAP}
+% traza general
+
+El primer mensaje, cuyo contenido se adjunta en la figura \ref{fig:binding}, autentica al usuario
+admin ya que incluye información como su Common Name, admin, que lo identifica como tal. Se puede observar cómo se envía la contraseña del mismo en claro en el
+campo authentication.
+
+% despliegue de binding
+\label{fig:binding}
+
+A ese mensaje bindRequest, el servidor LDAP responde con un mensaje, de tipo bindResponse success, indicando que se ha autenticado correctamente.
+
+A continuación, envía el servidor un mensaje searchRequest preguntando por el nombre de usuario introducido, que, en este caso, será %%EL QUE SEA
+
+%% despligue de searchRequest
+
+El servidor LDAP responde con un mensaje searchResEntry, enviando todas las coincidencias obtenidas para esa consulta dentro del contenido de los campos searchRestEntry. En este caso tan solo devuelve uno, ya que solo hay un usuario con ID %%USUARIO QUE SEA
+
+%%despliegue de searchRestEntry
+
+Finalmente, el servidor owncloud, enviará un mensaje unbindRegister para desconectarse del servidor LDAP.
+
+%%despligue de unbindingRegister
+
+\subsection{Servicio de almacenamiento}
+Para nuestro servicio de almacenamiento en la nube utilizaremos Owncloud. Es una aplicación de cloud computing para el servicio de alojamiento y compartición de archivos, de código abierto y que permite un amplio abanico de usos tales como la
+compartición de archivos entre distintos equipos y el cifrado de datos.
+
+\subsubsection{Autenticación con LDAP}
+El servicio de almacenamiento owncloud dispone de una base de datos donde almacenar usuarios que utilicen dicho servicio, pero ya que disponemos de un directorio activo en nuestro escenario vamos a utilizarlo para la autenticación de credenciales para acceder al repositorio de cada usuario.
+
+Para ello, hemos añadido una unidad organizacional al servicio de directorio LDAP, en ella, el administrador del LDAP insertará a los usuarios que dispongan de repositorio en el servicio de almacenamiento.
+
+Una vez instalado y configurado el servicio el Departamento Central, accedemos a éste con la dirección ``192.168.110.100/owncloud''. La primera vez que se accede a owncloud nos pide que configuremos los credenciales del administrador
+
+
 \subsubsection{Cuotas de disco de usuarios}
-\subsubsection{Establecimiento de conexión segura}
-\subsubsection{Revocación de certificados}
+En la ventana de usuarios aparece la opción de asignar a cada uno de ellos cuotas de almacenamiento. Tal y como comentamos antes, asignaremos a cada uno de ellos una cuota máxima de 1GB.
 
+Las cuotas de disco son útiles y necesarias para poder establecer un control sobre la cantidad máxima de datos que el servidor puede alojar. En caso de que se requiriese un mayor espacio para los usuarios, y ese espacio excediese la capacidad del disco duro del
+servidor, podríamos hacer uso de la tecnología de LVM (Logical Volume Manager). 
+
+LVM es una implementación de un administrador de volúmenes lógicos para el kernel Linux, el administrador podría utilizarla para el redimensionado de volúmenes lógicos del disco duro del servidor donde se aloja el servicio de almacenamiento cloud, ya que permite administrar los discos duros del sistema, incluso estando éstos activos, sin necesidad de desmontar los sistemas de ficheros ni de parar ningún servicio. De este modo, si en un momento necesitásemos más espacio, añadiendo otro disco duro
+al equipo esto se solucionaría. No
+hemos podido implementar esta funcionalidad por falta de tiempo.
+
+
+\subsubsection{Establecimiento de conexión segura}
+
+\section{Certificados de usuario}
+\subsection{Arquitectura PKI}
+\subsection{Creación de la CA y subCA}
+\subsection{Creación certificados para servidores}
+\subsection{Configuración apache}
+\subsection{Revocación de certificados}
+\subsection{Creación certificados para cliente}
+\subsection{Configuración de Apache}
+\subsection{Configuración del navegador}
+\subsection{Distribución de CRLs}
+
+\section{Conclusiones}
 
 \section{Bibliografía}
 %----------------------------------------------------------------------------------------
